@@ -157,14 +157,104 @@ function showTab(id){
     document.getElementById(tab).hidden=tab!==id;
   });
 }
-async function readSurah(num,name){
-  const reader=document.getElementById("reader");
-  reader.hidden=false;
-  reader.textContent="Loading Surah "+name+"...";
-  try{
-    const response=await fetch(
-      "https://api.alquran.cloud/v1/surah/"+num
-    );
+
+async function readSurah(num, name) {
+  const reader = document.getElementById("reader");
+  reader.hidden = false;
+  reader.textContent = "Loading Arabic, Hindi and English...";
+
+  try {
+    const url =
+      "https://api.alquran.cloud/v1/surah/" +
+      num +
+      "/editions/quran-uthmani,hi.hindi,en.sahih";
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error("Quran data request failed");
+    }
+
+    const result = await response.json();
+
+    if (
+      result.code !== 200 ||
+      !Array.isArray(result.data) ||
+      result.data.length < 3
+    ) {
+      throw new Error("Translation data unavailable");
+    }
+
+    const arabic = result.data[0].ayahs;
+    const hindi = result.data[1].ayahs;
+    const english = result.data[2].ayahs;
+
+    if (
+      !arabic.length ||
+      arabic.length !== hindi.length ||
+      arabic.length !== english.length
+    ) {
+      throw new Error("Ayah data does not match");
+    }
+
+    reader.replaceChildren();
+
+    const title = document.createElement("h2");
+    title.textContent = name + " (" + num + ")";
+    reader.appendChild(title);
+
+    const note = document.createElement("p");
+    note.className = "small";
+    note.textContent = "Arabic Quran • Hindi Tarjuma • English Translation";
+    reader.appendChild(note);
+
+    for (let i = 0; i < arabic.length; i++) {
+      const block = document.createElement("div");
+      block.className = "card";
+
+      const number = document.createElement("h3");
+      number.textContent = "Ayah " + arabic[i].numberInSurah;
+      block.appendChild(number);
+
+      const ar = document.createElement("p");
+      ar.lang = "ar";
+      ar.dir = "rtl";
+      ar.className = "arabic";
+      ar.style.textAlign = "right";
+      ar.textContent = arabic[i].text;
+      block.appendChild(ar);
+
+      const hiTitle = document.createElement("strong");
+      hiTitle.textContent = "Hindi Tarjuma";
+      block.appendChild(hiTitle);
+
+      const hi = document.createElement("p");
+      hi.lang = "hi";
+      hi.textContent = hindi[i].text;
+      block.appendChild(hi);
+
+      const enTitle = document.createElement("strong");
+      enTitle.textContent = "English Translation";
+      block.appendChild(enTitle);
+
+      const en = document.createElement("p");
+      en.lang = "en";
+      en.textContent = english[i].text.replace(/<[^>]*>/g, "");
+      block.appendChild(en);
+
+      reader.appendChild(block);
+    }
+
+    reader.scrollIntoView({ behavior: "smooth" });
+
+  } catch (error) {
+    reader.textContent =
+      "Translations load nahi ho sake. Internet check karein " +
+      "aur dobara try karein.";
+    console.error("Quran translation error:", error);
+  }
+}
+  
     if(!response.ok) throw new Error("Network error");
     const result=await response.json();
     if(result.code!==200) throw new Error("Quran data unavailable");
